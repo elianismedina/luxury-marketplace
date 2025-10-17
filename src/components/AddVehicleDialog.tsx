@@ -77,7 +77,7 @@ export function AddVehicleDialog({
     defaultValues: {
       make: "",
       model: "",
-      year: new Date().getFullYear(),
+      year: 2020,
       mileage: 0,
       vin: "",
     },
@@ -97,7 +97,7 @@ export function AddVehicleDialog({
       form.reset({
         make: "",
         model: "",
-        year: new Date().getFullYear(),
+        year: 2020,
         mileage: 0,
         vin: "",
       });
@@ -143,10 +143,7 @@ export function AddVehicleDialog({
                 <FormItem>
                   <FormLabel>Marca</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="ej., Toyota, Ford, Honda"
-                      {...field}
-                    />
+                    <Input placeholder="ej., Toyota, Ford, Honda" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -160,10 +157,7 @@ export function AddVehicleDialog({
                 <FormItem>
                   <FormLabel>Modelo</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="ej., Camry, F-150, Civic"
-                      {...field}
-                    />
+                    <Input placeholder="ej., Camry, F-150, Civic" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -181,10 +175,11 @@ export function AddVehicleDialog({
                       <Input
                         type="number"
                         placeholder="2020"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value) || 0)
-                        }
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === "" ? 0 : parseInt(value));
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -202,10 +197,11 @@ export function AddVehicleDialog({
                       <Input
                         type="number"
                         placeholder="50000"
-                        {...field}
-                        onChange={(e) =>
-                          field.onChange(parseInt(e.target.value) || 0)
-                        }
+                        value={field.value || ""}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          field.onChange(value === "" ? 0 : parseInt(value));
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
