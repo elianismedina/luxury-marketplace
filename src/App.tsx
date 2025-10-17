@@ -61,6 +61,11 @@ export default function App() {
   useEffect(() => {
     if (user && !authLoading) {
       loadVehicles();
+    } else if (!user && !authLoading) {
+      // Limpiar estado cuando no hay usuario
+      setVehicles([]);
+      setSelectedVehicle(null);
+      setActiveTab("home");
     }
   }, [user, authLoading]);
 
@@ -383,6 +388,10 @@ export default function App() {
                   onClick={async () => {
                     try {
                       await signOut();
+                      // Limpiar estado inmediatamente
+                      setVehicles([]);
+                      setSelectedVehicle(null);
+                      setActiveTab("home");
                       toast.success("Sesión cerrada");
                     } catch (error: any) {
                       toast.error("Error al cerrar sesión");
