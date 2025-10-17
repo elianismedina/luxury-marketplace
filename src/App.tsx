@@ -7,6 +7,9 @@ import {
   Plus,
   Filter,
   ShoppingCart,
+  LogIn,
+  LogOut,
+  User,
 } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
@@ -20,11 +23,13 @@ import {
 } from "./components/ui/select";
 import { VehicleCard } from "./components/VehicleCard";
 import { AddVehicleDialog } from "./components/AddVehicleDialog";
+import { AuthDialog } from "./components/AuthDialog";
 import { PartCard } from "./components/PartCard";
 import { ServiceCard } from "./components/ServiceCard";
 import { RecommendationCard } from "./components/RecommendationCard";
 import { toast } from "sonner";
 import { supabase } from "./utils/supabase";
+import { useAuth } from "./contexts/AuthContext";
 
 interface Vehicle {
   id: string;
@@ -41,10 +46,12 @@ interface Vehicle {
 type Tab = "home" | "search" | "services" | "garage";
 
 export default function App() {
+  const { user, signOut, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | undefined>();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -52,14 +59,23 @@ export default function App() {
 
   // Load vehicles from Supabase
   useEffect(() => {
-    loadVehicles();
-  }, []);
+    if (user && !authLoading) {
+      loadVehicles();
+    }
+  }, [user, authLoading]);
 
   const loadVehicles = async () => {
+    if (!user) {
+      setVehicles([]);
+      setSelectedVehicle(null);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from("vehicles")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -77,23 +93,30 @@ export default function App() {
   };
 
   const handleAddVehicle = async (vehicle: Omit<Vehicle, "id">) => {
+    if (!user) {
+      toast.error("Debes iniciar sesión para agregar vehículos");
+      setShowAuthDialog(true);
+      return;
+    }
+
     try {
       if (editingVehicle) {
         // Update existing vehicle
         const { error } = await supabase
           .from("vehicles")
           .update(vehicle)
-          .eq("id", editingVehicle.id);
+          .eq("id", editingVehicle.id)
+          .eq("user_id", user.id);
 
         if (error) throw error;
 
         toast.success("Vehículo actualizado exitosamente");
         setEditingVehicle(undefined);
       } else {
-        // Insert new vehicle
+        // Insert new vehicle with user_id
         const { data, error } = await supabase
           .from("vehicles")
-          .insert([vehicle])
+          .insert([{ ...vehicle, user_id: user.id }])
           .select()
           .single();
 
@@ -115,8 +138,17 @@ export default function App() {
   };
 
   const handleDeleteVehicle = async (id: string) => {
+    if (!user) {
+      toast.error("Debes iniciar sesión");
+      return;
+    }
+
     try {
-      const { error } = await supabase.from("vehicles").delete().eq("id", id);
+      const { error } = await supabase
+        .from("vehicles")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
 
@@ -326,8 +358,8 @@ export default function App() {
               </p>
             )}
           </div>
-          {activeTab === "search" && (
-            <div className="relative">
+          <div className="flex items-center gap-2">
+            {activeTab === "search" && (
               <Button variant="ghost" size="icon" className="relative">
                 <ShoppingCart className="w-5 h-5" />
                 {cartCount > 0 && (
@@ -336,8 +368,42 @@ export default function App() {
                   </Badge>
                 )}
               </Button>
-            </div>
-          )}
+            )}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  <span className="text-sm text-gray-600">
+                    {user.email?.split("@")[0]}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await signOut();
+                      toast.success("Sesión cerrada");
+                    } catch (error: any) {
+                      toast.error("Error al cerrar sesión");
+                    }
+                  }}
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="ml-1 hidden sm:inline">Salir</span>
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setShowAuthDialog(true)}
+              >
+                <LogIn className="w-4 h-4" />
+                <span className="ml-1">Iniciar Sesión</span>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -567,6 +633,12 @@ export default function App() {
         }}
         onSave={handleAddVehicle}
         editVehicle={editingVehicle}
+      />
+
+      {/* Auth Dialog */}
+      <AuthDialog
+        open={showAuthDialog}
+        onClose={() => setShowAuthDialog(false)}
       />
     </div>
   );
